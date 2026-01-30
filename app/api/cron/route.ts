@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@/prisma/generated/prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import pg from "pg"
+import { prisma } from "@/lib/prisma"
 import { Resend } from 'resend'
 import { headers } from 'next/headers'
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-})
-
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Retry configuration
@@ -37,7 +29,7 @@ export async function GET(req: Request) {
     // Verify that this is a legitimate Vercel cron job request
     const headersList = await headers()
     const authHeader = headersList.get('authorization')
-    
+
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },

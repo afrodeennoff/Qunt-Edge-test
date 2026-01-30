@@ -44,17 +44,17 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
 
     const targetUrl = `https://sslecal2.investing.com/?timeZone=55&lang=${langMap[lang]}`;
     console.log(`Fetching calendar events from ${targetUrl} using Vercel Sandbox...`);
-    
+
     // Use the sandbox browser approach
     const html = await scrapeWithSandbox(targetUrl, {
       timeout: 60000,
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
     });
-    
+
     // Parse the HTML table
     const events: InvestingEvent[] = []
     const tableRegex = /<tr[^>]*>([\s\S]*?)<\/tr>/g
-    
+
     let tableMatch
     let currentEvent: Partial<InvestingEvent> | null = null
     let currentDate: Date | null = null
@@ -62,12 +62,12 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
     let dateRowCount = 0
     let eventRowCount = 0
     let eventInfoRowCount = 0
-    
+
     while ((tableMatch = tableRegex.exec(html)) !== null) {
       rowCount++
       const fullRow = tableMatch[0] // Get the full tr element including attributes
       const row = tableMatch[1] // Get the content inside tr
-      
+
       // Check if this is a date row
       if (row.includes('theDay')) {
         dateRowCount++
@@ -88,7 +88,7 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
               parseInt(monthMap[month.toLowerCase()]) - 1,
               parseInt(date)
             ))
-            
+
             // Validate the date
             if (!isValid(currentDate)) {
               console.log('Invalid current date created:', { dateStr, currentDate })
@@ -101,7 +101,7 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
         }
         continue
       }
-      
+
       // Check if this is an event info row
       if (row.includes('eventInfo')) {
         eventInfoRowCount++
@@ -117,41 +117,41 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
         }
         continue
       }
-      
+
       // Skip non-event rows
       if (!fullRow.includes('eventRowId_')) {
         continue
       }
-      
+
       // If we have a current event but found a new event row,
       // it means the previous event didn't have an info row
       if (currentEvent) {
         events.push(currentEvent as InvestingEvent)
         currentEvent = null
       }
-      
+
       eventRowCount++
-      
+
       // Extract event ID and timestamp from tr attributes
       const eventIdMatch = fullRow.match(/event_attr_id="(\d+)"/)
       const timestampMatch = fullRow.match(/event_timestamp="([^"]+)"/)
       const eventTimestamp = timestampMatch ? timestampMatch[1] : null
       const eventId = eventIdMatch ? eventIdMatch[1] : null
-      
+
       // Extract time
       const timeMatch = row.match(/<td[^>]*class="[^"]*time[^"]*"[^>]*>([^<]+)<\/td>/)
       if (!timeMatch) continue
-      
+
       const time = timeMatch[1].trim()
-      
+
       // Handle "All day" events
       if (time === 'Toute la journée' || time === 'All Day') {
         if (!currentDate) continue
-        
+
         // Extract country and event name for all-day events
         const countryMatch = row.match(/<span[^>]*title="([^"]+)"[^>]*class="[^"]*ceFlags[^"]*"[^>]*>/)
         const eventMatch = row.match(/<td[^>]*class="[^"]*event[^"]*"[^>]*>([^<]+)<\/td>/)
-        
+
         if (countryMatch && eventMatch) {
           currentEvent = {
             time: time,
@@ -168,39 +168,39 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
         }
         continue
       }
-      
+
       // Handle regular events
       if (!eventTimestamp) {
         console.log('Skipping regular event - missing timestamp:', { eventTimestamp })
         continue
       }
-      
+
       // Extract country and currency
       const flagMatch = row.match(/<span[^>]*title="([^"]+)"[^>]*class="[^"]*ceFlags[^"]*"[^>]*>.*?<\/span>\s*([A-Z]{3})/)
       if (!flagMatch) {
         console.log('Skipping regular event - no flag/currency match:', row)
         continue
       }
-      
+
       const country = flagMatch[1]
       const currency = flagMatch[2]
-      
+
       // Extract impact/sentiment
       const impactMatch = row.match(/<td[^>]*class="[^"]*sentiment[^"]*"[^>]*>([\s\S]*?)<\/td>/)
       if (!impactMatch) {
         console.log('Skipping regular event - no impact match:', row)
         continue
       }
-      
+
       const impact = impactMatch[1]
-      
+
       // Extract event name
       const eventMatch = row.match(/<td[^>]*class="[^"]*event[^"]*"[^>]*>([\s\S]*?)<\/td>/)
       if (!eventMatch) {
         console.log('Skipping regular event - no event name match:', row)
         continue
       }
-      
+
       // Clean the event name by removing HTML elements and extra whitespace
       const eventName = eventMatch[1]
         .replace(/<[^>]*>/g, '') // Remove all HTML tags
@@ -225,7 +225,7 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
         timestamp: eventTimestamp,
         country
       })
-      
+
       // Parse the timestamp into UTC
       try {
         const [datePart, timePart] = eventTimestamp.split(' ')
@@ -244,7 +244,7 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
 
         // Create UTC date
         const utcDate = new Date(Date.UTC(year, month - 1, day, hours, minutes))
-        
+
         // Validate the date
         if (!isValid(utcDate)) {
           console.log('Invalid UTC date created:', utcDate)
@@ -306,6 +306,15 @@ async function fetchInvestingCalendarEvents(lang: 'fr' | 'en' = 'fr') {
 
 export async function GET(request: Request) {
   try {
+    // Verify that this is a legitimate Vercel cron job request
+    const authHeader = request.headers.get('authorization')
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     // Get the URL and search params
     const { searchParams } = new URL(request.url)
     const lang = (searchParams.get('lang') || 'fr') as 'fr' | 'en'
@@ -375,10 +384,10 @@ export async function GET(request: Request) {
   } catch (error) {
     console.error('Error in GET route:', error)
     return NextResponse.json(
-      { 
+      {
         success: false,
-        error: 'Failed to fetch events from Investing.com', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        error: 'Failed to fetch events from Investing.com',
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     )

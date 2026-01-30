@@ -1,6 +1,14 @@
 {
   "crons": [
     {
+      "path": "/api/cron",
+      "schedule": "0 8 * * 0"
+    },
+    {
+      "path": "/api/cron/compute-trade-data",
+      "schedule": "0 1 * * 1"
+    },
+    {
       "path": "/api/cron/investing?lang=fr&db=true",
       "schedule": "0 5 * * 1"
     },

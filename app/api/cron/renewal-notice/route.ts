@@ -1,19 +1,11 @@
 import { NextResponse } from "next/server"
-import { PrismaClient } from "@/prisma/generated/prisma/client"
-import { PrismaPg } from "@prisma/adapter-pg"
-import pg from "pg"
+import { prisma } from "@/lib/prisma"
 import { Resend } from 'resend'
 import { headers } from 'next/headers'
 import { format, subDays, isEqual, startOfDay } from 'date-fns'
 import { enUS, fr } from 'date-fns/locale'
 import RenewalNoticeEmail from '@/components/emails/renewal-notice'
 
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-})
-
-const adapter = new PrismaPg(pool)
-const prisma = new PrismaClient({ adapter })
 const resend = new Resend(process.env.RESEND_API_KEY)
 
 // Utility function to get date locale
@@ -27,7 +19,7 @@ const getFrequencyDisplay = (frequency: string, language: string) => {
     en: {
       monthly: 'Monthly',
       quarterly: 'Quarterly',
-      biannual: 'Bi-annual', 
+      biannual: 'Bi-annual',
       annual: 'Annual',
       custom: 'Custom'
     },
@@ -39,14 +31,14 @@ const getFrequencyDisplay = (frequency: string, language: string) => {
       custom: 'Personnalisé'
     }
   }
-  
+
   return frequencies[language as keyof typeof frequencies]?.[frequency as keyof typeof frequencies.en] || frequency
 }
 
 // Utility function to calculate next payment date based on frequency
 const calculateNextPaymentDate = (currentDate: Date, frequency: string): Date => {
   const nextDate = new Date(currentDate)
-  
+
   switch (frequency) {
     case 'MONTHLY':
     case 'monthly': // Support legacy values during transition
@@ -73,7 +65,7 @@ const calculateNextPaymentDate = (currentDate: Date, frequency: string): Date =>
       nextDate.setMonth(nextDate.getMonth() + 1)
       break
   }
-  
+
   return nextDate
 }
 
@@ -83,7 +75,7 @@ export async function GET(req: Request) {
     // Verify that this is a legitimate Vercel cron job request
     const headersList = await headers()
     const authHeader = headersList.get('authorization')
-    
+
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json(
         { error: 'Unauthorized' },
@@ -92,7 +84,7 @@ export async function GET(req: Request) {
     }
 
     const today = startOfDay(new Date())
-    
+
     // Find all accounts with auto-renewal enabled and valid payment dates
     const accountsWithRenewal = await prisma.account.findMany({
       where: {
@@ -126,7 +118,7 @@ export async function GET(req: Request) {
     // Filter accounts that need renewal notification today
     const accountsToNotify = accountsWithRenewal.filter(account => {
       if (!account.nextPaymentDate || !account.renewalNotice) return false
-      
+
       const notificationDate = startOfDay(subDays(account.nextPaymentDate, account.renewalNotice))
       return isEqual(notificationDate, today)
     })
@@ -140,10 +132,10 @@ export async function GET(req: Request) {
 
     let successCount = 0
     let errorCount = 0
-    
+
     // Group accounts by user to avoid sending multiple emails to the same user
     const userAccountsMap = new Map<string, typeof accountsToNotify>()
-    
+
     accountsToNotify.forEach(account => {
       if (account.user?.email) {
         const existing = userAccountsMap.get(account.user.email) || []
@@ -157,7 +149,7 @@ export async function GET(req: Request) {
         const user = userAccounts[0].user!
         const userLanguage = user.language || 'en'
         const locale = getDateLocale(userLanguage)
-        
+
         // If user has multiple accounts expiring, send one email with all accounts
         // For simplicity, we'll send separate emails for each account
         for (const account of userAccounts) {
@@ -167,13 +159,13 @@ export async function GET(req: Request) {
             const accountName = account.number || `Account ${account.id}`
             const propFirmName = account.propfirm || 'Unknown Prop Firm'
             const frequency = account.paymentFrequency || 'monthly'
-            
+
             const unsubscribeUrl = `${process.env.NEXT_PUBLIC_APP_URL}/settings/notifications`
 
             const { data, error } = await resend.emails.send({
               from: 'Deltalytix Renewals <renewals@eu.updates.deltalytix.app>',
               to: userEmail,
-              subject: userLanguage === 'fr' 
+              subject: userLanguage === 'fr'
                 ? `Renouvellement prochain - ${accountName}`
                 : `Upcoming Renewal - ${accountName}`,
               react: RenewalNoticeEmail({
@@ -200,17 +192,17 @@ export async function GET(req: Request) {
             } else {
               console.log(`Renewal notice sent to ${userEmail} for account ${account.id}`)
               successCount++
-              
+
               // Update the nextPaymentDate to the next cycle (except for custom frequency)
               try {
                 if (account.paymentFrequency !== 'CUSTOM' && account.nextPaymentDate) {
                   const newNextPaymentDate = calculateNextPaymentDate(account.nextPaymentDate, account.paymentFrequency || 'MONTHLY')
-                  
+
                   await prisma.account.update({
                     where: { id: account.id },
                     data: { nextPaymentDate: newNextPaymentDate }
                   })
-                  
+
                   console.log(`Updated nextPaymentDate for account ${account.id} from ${account.nextPaymentDate} to ${newNextPaymentDate}`)
                 }
               } catch (updateError) {
@@ -233,8 +225,8 @@ export async function GET(req: Request) {
     return NextResponse.json({
       success: true,
       message: `Renewal notice emails processed: ${successCount} successful, ${errorCount} failed`,
-      stats: { 
-        success: successCount, 
+      stats: {
+        success: successCount,
         failed: errorCount,
         accountsChecked: accountsWithRenewal.length,
         accountsToNotify: accountsToNotify.length,
