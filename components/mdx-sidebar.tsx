@@ -129,7 +129,7 @@ export function MdxSidebar() {
       // Track if user has started scrolling (threshold to account for small movements)
       const scrollThreshold = 10
       setHasScrolled(window.scrollY > scrollThreshold)
-      
+
       // Calculate scroll progress for the article
       const article = document.querySelector("article")
       if (article) {
@@ -266,10 +266,9 @@ export function MdxSidebar() {
   return (
     <>
       {/* Mobile Navigation - Fixed below navbar, moves to top when navbar hides */}
-      <div 
-        className={`lg:hidden fixed left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10 transition-all duration-300 ${
-          hasScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
-        }`}
+      <div
+        className={`lg:hidden fixed left-0 right-0 z-40 bg-background/95 backdrop-blur-sm border-b border-gray-200 dark:border-white/10 transition-all duration-300 ${hasScrolled ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-full pointer-events-none'
+          }`}
         style={{ top: isNavbarVisible ? `${NAVBAR_HEIGHT}px` : '0px' }}
       >
         <div ref={dropdownRef} className="relative px-4 py-2.5">
@@ -295,19 +294,17 @@ export function MdxSidebar() {
               )}
             </div>
             <ChevronDown
-              className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${
-                isDropdownOpen ? "rotate-180" : ""
-              }`}
+              className={`h-4 w-4 text-muted-foreground flex-shrink-0 transition-transform duration-200 ${isDropdownOpen ? "rotate-180" : ""
+                }`}
             />
           </button>
 
           {/* Dropdown */}
           <div
-            className={`absolute left-0 right-0 top-full bg-background border-b border-gray-200 dark:border-white/10 shadow-lg transition-all duration-200 ${
-              isDropdownOpen
+            className={`absolute left-0 right-0 top-full bg-background border-b border-gray-200 dark:border-white/10 shadow-lg transition-all duration-200 ${isDropdownOpen
                 ? "opacity-100 translate-y-0"
                 : "opacity-0 -translate-y-2 pointer-events-none"
-            }`}
+              }`}
           >
             <nav className="max-h-64 overflow-y-auto py-2">
               {headings.map((heading, index) => (
@@ -315,11 +312,10 @@ export function MdxSidebar() {
                   key={heading.id}
                   href={`#${heading.id}`}
                   onClick={(e) => handleClick(e, heading.id, true)}
-                  className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${
-                    activeHeading === heading.id
+                  className={`flex items-center gap-3 px-4 py-2.5 text-sm transition-colors ${activeHeading === heading.id
                       ? "text-blue-500 dark:text-blue-400 bg-blue-500/10"
                       : "text-muted-foreground hover:text-foreground hover:bg-gray-100 dark:hover:bg-white/5"
-                  }`}
+                    }`}
                 >
                   <span className="text-xs text-muted-foreground w-4 text-right">{index + 1}</span>
                   <span>{heading.text}</span>
@@ -339,11 +335,10 @@ export function MdxSidebar() {
               {headings.map((heading) => (
                 <div
                   key={heading.id}
-                  className={`h-0.5 w-8 rounded-full transition-all duration-200 cursor-pointer ${
-                    activeHeading === heading.id
+                  className={`h-0.5 w-8 rounded-full transition-all duration-200 cursor-pointer ${activeHeading === heading.id
                       ? "bg-black shadow-[0_0_8px_rgba(0,0,0,0.3)] dark:bg-white dark:shadow-[0_0_8px_rgba(255,255,255,0.3)]"
                       : "bg-gray-300 dark:bg-white/10 "
-                  }`}
+                    }`}
                   onClick={(e) => {
                     e.preventDefault()
                     const element = document.getElementById(heading.id)
@@ -358,11 +353,10 @@ export function MdxSidebar() {
 
           {/* Expanded State - Custom Card */}
           <div
-            className={`absolute right-0 top-0 transition-all duration-200 ${
-              isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
-            }`}
+            className={`absolute right-0 top-0 transition-all duration-200 ${isHovered ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4 pointer-events-none"
+              }`}
           >
-            <div className="w-64 rounded-lg border bg-card text-card-foreground shadow-lg border-gray-200 dark:border-white/10 ">
+            <div className="w-64 rounded-lg border bg-card/80 backdrop-blur-md text-card-foreground shadow-xl border-gray-200 dark:border-white/10">
               <div className="p-4">
                 <nav className="space-y-1">
                   {headings.map((heading) => (
@@ -370,11 +364,10 @@ export function MdxSidebar() {
                       key={heading.id}
                       href={`#${heading.id}`}
                       onClick={(e) => handleClick(e, heading.id)}
-                      className={`block py-1.5 px-2 text-sm rounded transition-colors cursor-pointer text-gray-400 hover:text-black hover:bg-gray-100 dark:hover:text-white dark:hover:bg-white/10 ${
-                        activeHeading === heading.id
+                      className={`block py-1.5 px-2 text-sm rounded transition-colors cursor-pointer text-gray-400 hover:text-black hover:bg-gray-100 dark:hover:text-white dark:hover:bg-white/10 ${activeHeading === heading.id
                           ? "!text-blue-500 dark:!text-blue-400 "
                           : " dark:hover:text-white dark:hover:bg-gray-800"
-                      }`}
+                        }`}
                     >
                       {heading.text}
                     </a>
