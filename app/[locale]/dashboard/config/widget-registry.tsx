@@ -1,4 +1,5 @@
 import React from 'react'
+import { useI18n } from "@/locales/client"
 import { WidgetType, WidgetSize } from '../types/dashboard'
 import EquityChart from '../components/charts/equity-chart'
 import TickDistributionChart from '../components/charts/tick-distribution'
